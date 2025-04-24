@@ -1,0 +1,47 @@
+services:
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  valkey:
+    image: valkey/valkey:latest
+    ports:
+      - "6380:6379"
+    volumes:
+      - valkey_data:/data
+    command: valkey-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  benchmark:
+    build: .
+    depends_on:
+      redis:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - VALKEY_HOST=valkey
+      - VALKEY_PORT=6379
+    volumes:
+      - ./results:/app/results
+    command: >
+      bash -c "python app.py && python visualize.py"
+
+volumes:
+  redis_data:
+  valkey_data:
